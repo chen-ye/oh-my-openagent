@@ -1,6 +1,6 @@
 import { log } from "../shared"
 
-const WARNING_MESSAGE =
+export const WARNING_MESSAGE =
   "Prefer the Read tool over `cat`/`head`/`tail` for reading file contents. The Read tool provides line numbers and hash anchors for precise editing."
 
 const FILE_READ_PATTERNS = [
@@ -33,7 +33,7 @@ export function createBashFileReadGuardHook() {
         command,
       })
 
-      if (typeof output.output === "string") {
+      if (typeof output.output === "string" && !output.output.includes(WARNING_MESSAGE)) {
         output.output = `[WARNING: ${WARNING_MESSAGE}]\n\n${output.output}`
       }
     },

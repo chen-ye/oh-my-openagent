@@ -1,7 +1,7 @@
 /// <reference types="bun-types" />
 
 import { describe, expect, it } from "bun:test"
-import { createBashFileReadGuardHook } from "./bash-file-read-guard"
+import { createBashFileReadGuardHook, WARNING_MESSAGE } from "./bash-file-read-guard"
 
 type ToolExecuteAfterInput = {
   tool: string
@@ -60,5 +60,33 @@ describe("createBashFileReadGuardHook", () => {
     await hook["tool.execute.after"]?.(afterInput, afterOutput)
 
     expect(afterOutput.output).toBe("match")
+  })
+  it("ignores unrelated bash commands", async () => {
+    // given
+    const hook = createBashFileReadGuardHook()
+    const afterInput: ToolExecuteAfterInput = { tool: "bash", sessionID: "ses-1", callID: "call-1", args: { command: "echo hello" } }
+    const afterOutput: ToolExecuteAfterOutput = { title: "Bash", output: "hello\n", metadata: {} }
+
+    // when
+    await hook["tool.execute.after"]?.(afterInput, afterOutput)
+
+    // then
+    expect(afterOutput.output).toBe("hello\n")
+  })
+
+  it("prepends warning exactly once and is idempotent", async () => {
+    // given
+    const hook = createBashFileReadGuardHook()
+    const afterInput: ToolExecuteAfterInput = { tool: "bash", sessionID: "ses-1", callID: "call-1", args: { command: "cat package.json" } }
+    const afterOutput: ToolExecuteAfterOutput = { title: "Bash", output: '{"name": "test"}', metadata: {} }
+
+    // when
+    await hook["tool.execute.after"]?.(afterInput, afterOutput)
+    const firstOutput = afterOutput.output
+    await hook["tool.execute.after"]?.(afterInput, afterOutput)
+
+    // then
+    expect(afterOutput.output).toBe(firstOutput)
+    expect(afterOutput.output.indexOf(WARNING_MESSAGE)).toBe(afterOutput.output.lastIndexOf(WARNING_MESSAGE))
   })
 })
